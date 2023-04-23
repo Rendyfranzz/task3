@@ -3,35 +3,38 @@ package main
 import (
 	"context"
 	"crud/db"
-	"fmt"
-	"strconv"
+	"log"
+	"net/http"
 
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
-type user struct {
-	ID       string `json:"id"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
 func main() {
-	client := db.MgoConn()
-	coll := client.Database("task3").Collection("task3")
-	for i := 0; i < 3; i++ {
-		filter := bson.D{{"name", "test" + strconv.Itoa(i)}}
-		var result user
-		err := coll.FindOne(context.TODO(), filter).Decode(&result)
-		// coll.DeleteOne(context.TODO(), filter)
-		if err != nil {
-			doc := user{ID: strconv.Itoa(i), Name: "test" + strconv.Itoa(i), Email: "test" + strconv.Itoa(i), Password: "test" + strconv.Itoa(i)}
-			result, err := coll.InsertOne(context.TODO(), doc)
-			if err != nil {
-				fmt.Println("error")
-			}
-			fmt.Printf("Inserted document with _id: %v\n", result.InsertedID)
-		}
-		fmt.Println("user with name test " + strconv.Itoa(i) + " already exist")
+	hashTable := NewHashTable(1000)
+	conn, closeConnection, err := db.Connect("mongodb+srv://rendi:Kosongan96@cluster0.qkmm8ul.mongodb.net/?retryWrites=true&w=majority")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer closeConnection(context.Background())
+
+	log.Println("Connection ready!!!")
+
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Use(middleware.Recoverer)
+
+	r.Post("/create/mongo", CreateUserByMongo(conn, hashTable))
+	r.Get("/create_many/mongo", CreateUserManyByMongo(conn, hashTable))
+
+	r.Get("/get_mongo/{id}", GetOneFromMongoDB(conn))
+	r.Get("/get_mongo_name/{name}", GetOneFromMongoDBHashName(conn, hashTable))
+
+	r.Get("/get_all/mongo", GetAllFromMongoDB(conn))
+
+	r.Get("/get_match/{name}", GetMatchedPerson(conn, hashTable))
+	if err := http.ListenAndServe(":8080", r); err != nil {
+		log.Fatal(err)
 	}
 }

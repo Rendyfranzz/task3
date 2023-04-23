@@ -5,17 +5,20 @@ import "fmt"
 var results [][]string
 
 func arrange(array []string, memory []string) [][]string {
-	var current string
 	if memory == nil {
-		memory = []string{}
+		memory = make([]string, 0)
 	}
 	for i := 0; i < len(array); i++ {
-		current, array = array[i], append(array[:i], array[i+1:]...)
-		if len(array) == 0 {
-			results = append(results, append(memory, current))
+		current := []string{array[i]}
+		if len(array) == 1 {
+			results = append(results, append(memory, current...))
+		} else {
+			subarray := make([]string, len(array)-1)
+			copy(subarray, array[:i])
+			copy(subarray[i:], array[i+1:])
+			newMemory := append(memory, current...)
+			arrange(subarray, newMemory)
 		}
-		arrange(append([]string(nil), array...), append(memory, current))
-		array = append(array[:i], append([]string{current}, array[i:]...)...)
 	}
 	return results
 }
@@ -23,5 +26,7 @@ func arrange(array []string, memory []string) [][]string {
 func main() {
 	candidates := []string{"Baswedan", "Subianto", "Maharani", "Ganjar"}
 	chairs := arrange(candidates, nil)
-	fmt.Println(chairs)
+	for _, chair := range chairs {
+		fmt.Println(chair)
+	}
 }
